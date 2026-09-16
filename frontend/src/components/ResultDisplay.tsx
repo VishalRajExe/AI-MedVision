@@ -8,15 +8,16 @@ interface ResultDisplayProps {
 }
 
 const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, signal }) => {
-    const [viewMode, setViewMode] = useState<'normalized' | 'raw'>('normalized');
-
     const signalData: SignalData = Array.isArray(signal)
         ? { normalized: signal, raw: [] }
         : signal;
 
-    const activeSignal = viewMode === 'normalized'
-        ? signalData.normalized
-        : signalData.raw;
+    const hasRaw = Boolean(signalData.raw && signalData.raw.length > 0);
+    const [viewMode, setViewMode] = useState<'normalized' | 'raw'>(hasRaw ? 'raw' : 'normalized');
+
+    const activeSignal = viewMode === 'raw' && hasRaw
+        ? signalData.raw
+        : signalData.normalized;
 
     let trimmedSignal = [...activeSignal];
     while (trimmedSignal.length > 0 && trimmedSignal[trimmedSignal.length - 1] === 0) {
@@ -47,41 +48,56 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, signal }) => {
         <div className="space-y-6">
             {/* ECG Signal Chart */}
             <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-semibold text-gray-800">📈 ECG Signal</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800">📈 ECG Signal</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            {viewMode === 'raw' && hasRaw ? (
+                                <span>Showing <strong>Original CSV Data</strong> (Sample 0: <span className="font-mono text-blue-600 font-bold">{signalData.raw[0]}</span>)</span>
+                            ) : (
+                                <span>Showing <strong>Normalized Signal</strong> (StandardScaler z-scores passed to neural network)</span>
+                            )}
+                        </p>
+                    </div>
 
                     <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-                        <button
-                            onClick={() => setViewMode('normalized')}
-                            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                                viewMode === 'normalized'
-                                    ? 'bg-white text-blue-600 font-medium shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-800'
-                            }`}
-                        >
-                            Normalized
-                        </button>
                         <button
                             onClick={() => setViewMode('raw')}
                             className={`px-3 py-1 text-sm rounded-md transition-colors ${
                                 viewMode === 'raw'
-                                    ? 'bg-white text-blue-600 font-medium shadow-sm'
+                                    ? 'bg-white text-blue-600 font-bold shadow-sm'
                                     : 'text-gray-600 hover:text-gray-800'
                             }`}
-                            disabled={!signalData.raw || signalData.raw.length === 0}
+                            disabled={!hasRaw}
                         >
-                            Raw
+                            Original CSV (Raw)
+                        </button>
+                        <button
+                            onClick={() => setViewMode('normalized')}
+                            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                                viewMode === 'normalized'
+                                    ? 'bg-white text-blue-600 font-bold shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                        >
+                            Model Input (Normalized)
                         </button>
                     </div>
                 </div>
 
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line type="monotone" dataKey="voltage" stroke="#3b82f6" dot={false} />
+                        <XAxis dataKey="time" label={{ value: 'Sample Index', position: 'insideBottomRight', offset: -5 }} />
+                        <YAxis label={{ value: viewMode === 'raw' ? 'CSV Value' : 'Z-Score', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip
+                            formatter={(value: any) => [
+                                value,
+                                viewMode === 'raw' ? 'Original CSV Value' : 'Normalized Z-score'
+                            ]}
+                            labelFormatter={(label) => `Sample #${label}`}
+                        />
+                        <Line type="monotone" dataKey="voltage" stroke="#3b82f6" dot={false} strokeWidth={2} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
