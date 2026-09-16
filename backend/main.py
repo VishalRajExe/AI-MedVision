@@ -267,6 +267,13 @@ async def upload_csv_file(file: UploadFile = File(...)):
         if len(model_signal) < 187:
             model_signal = np.pad(model_signal, (0, 187 - len(model_signal)), mode='constant')
 
+        # ── Scale to [0, 1] if raw unnormalized units (e.g. mV, ADC counts) ──
+        sig_min = float(model_signal.min())
+        sig_max = float(model_signal.max())
+        sig_range = sig_max - sig_min
+        if sig_range > 1e-6 and (sig_min < -0.05 or sig_max > 1.05):
+            model_signal = (model_signal - sig_min) / sig_range
+
         # ── Predict ───────────────────────────────────────────────────────
         result = predict_ecg(model_signal.tolist())
 

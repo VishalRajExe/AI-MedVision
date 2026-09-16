@@ -61,7 +61,15 @@ def predict_ecg(signal: list[float], uncertainty_threshold: float = 0.6):
         elif len(signal_array) > 187:
             signal_array = signal_array[:187]
 
-        # 2. Normalizacja
+        # 2. Min-Max normalization to [0, 1] for raw unnormalized signals (e.g. mV or ADC counts)
+        # The MIT-BIH dataset was preprocessed with all heartbeats scaled to [0.0, 1.0].
+        sig_min = float(signal_array.min())
+        sig_max = float(signal_array.max())
+        sig_range = sig_max - sig_min
+        if sig_range > 1e-6 and (sig_min < -0.05 or sig_max > 1.05):
+            signal_array = (signal_array - sig_min) / sig_range
+
+        # 3. Normalizacja za pomocą wyuczonego StandardScaler
         signal_array = scaler.transform(signal_array.reshape(1, -1))[0]
 
         # 3. Przygotowanie tensora o poprawnym kształcie (1, 1, 187)
