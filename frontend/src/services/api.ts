@@ -42,7 +42,15 @@ export const api = {
             method: 'POST',
             body: formData
         });
-        if (!response.ok) throw new Error('Failed to upload ECG file');
+
+        if (!response.ok) {
+            let detail = `Server error ${response.status}`;
+            try {
+                const err = await response.json();
+                detail = err.detail || err.message || detail;
+            } catch (_) {}
+            throw new Error(detail);
+        }
 
         const data = await response.json();
 
@@ -55,7 +63,7 @@ export const api = {
             Ventricular: data.Ventricular ?? 0,
             Fusion: data.Fusion ?? 0,
             Unknown: data.Unknown ?? 0,
-            signal_raw: data.signal_raw || [],              // ✅ ZMIANA
+            signal_raw: data.signal_raw || [],
             signal_normalized: data.signal_normalized || [],
             threshold: data.threshold ?? 0
         };
